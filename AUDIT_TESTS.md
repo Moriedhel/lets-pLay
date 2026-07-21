@@ -40,7 +40,31 @@ curl.exe -k -s -X DELETE https://localhost:8443/api/users/<id> -H "Authorization
 
 ---
 
-### 0c. Does authentication work correctly? Do operations respect user roles?
+### 0c. Is product ownership enforced correctly?
+
+```powershell
+# Create a product as player1
+$userToken = (curl.exe -k -s -X POST https://localhost:8443/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"player1\",\"password\":\"password123\"}' | ConvertFrom-Json).token
+$productId = (curl.exe -k -s -X POST https://localhost:8443/api/products -H "Content-Type: application/json" -H "Authorization: Bearer $userToken" -d '{\"name\":\"Owned Game\",\"description\":\"Owned by player1\",\"price\":10.0,\"quantity\":1}' | ConvertFrom-Json).id
+
+# Verify owner lookup returns the product
+curl.exe -k -s https://localhost:8443/api/products/owner/<player1-id> -H "Authorization: Bearer $userToken"
+
+# Another user should not be allowed to update/delete it
+$otherToken = (curl.exe -k -s -X POST https://localhost:8443/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"player2\",\"password\":\"password123\"}' | ConvertFrom-Json).token
+curl.exe -k -s -X PUT https://localhost:8443/api/products/$productId -H "Content-Type: application/json" -H "Authorization: Bearer $otherToken" -d '{\"name\":\"Hijacked\",\"description\":\"Not allowed\",\"price\":15.0,\"quantity\":1}' -w "`nStatus: %{http_code}`n"
+curl.exe -k -s -X DELETE https://localhost:8443/api/products/$productId -H "Authorization: Bearer $otherToken" -w "`nStatus: %{http_code}`n"
+
+# Owner can update/delete its own product
+curl.exe -k -s -X PUT https://localhost:8443/api/products/$productId -H "Content-Type: application/json" -H "Authorization: Bearer $userToken" -d '{\"name\":\"Owned Game Updated\",\"description\":\"Still owned\",\"price\":12.0,\"quantity\":1}' -w "`nStatus: %{http_code}`n"
+curl.exe -k -s -X DELETE https://localhost:8443/api/products/$productId -H "Authorization: Bearer $userToken" -w "`nStatus: %{http_code}`n"
+```
+
+**Expected:** `403` when a non-owner tries update/delete; `200`/`204` when the owner performs the same actions; owner lookup returns the product.
+
+---
+
+### 0d. Does authentication work correctly? Do operations respect user roles?
 
 Covered in depth in section 8 below (`@PreAuthorize`/`@PermitAll` tests): no token → `401`,
 non-admin token → `403`, admin token → `200`.

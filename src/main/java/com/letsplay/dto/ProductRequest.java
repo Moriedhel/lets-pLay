@@ -19,5 +19,7 @@ public record ProductRequest(
         BigDecimal price,
 
         @Min(value = 0, message = "Quantity must not be negative")
-        int quantity) {
+        int quantity,
+
+        String ownerId) {
 }
