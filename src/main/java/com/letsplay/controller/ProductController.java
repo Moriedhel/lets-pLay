@@ -130,7 +130,7 @@ public class ProductController {
 
     private void authorizeOwnerOrAdmin(Product product) {
         User currentUser = getAuthenticatedUser();
-        if (!isAdmin() && !product.getOwnerId().equals(currentUser.getId())) {
+        if (!isAdmin() && (product.getOwnerId() == null || !product.getOwnerId().equals(currentUser.getId()))) {
             throw new AccessDeniedException("You are not the owner of this product");
         }
     }
